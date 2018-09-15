@@ -177,7 +177,7 @@ class SpaceExploration(HeuristicSearch):
 		self.hard_min_radius  = float(rospy.get_param("~hard_min_radius"))
 		self.heuristic_bias   = float(rospy.get_param("~heuristic_bias"))
 		self.min_goal_overlap = float(rospy.get_param("~min_goal_overlap"))
-		self.half_space_theta = float(rospy.get_param("~half_space_theta"))
+		self.half_space_theta = float(rospy.get_param("~half_space_theta", 0))
 
 		# cache reused values
 		self.map = omap
@@ -274,7 +274,7 @@ class PathPlanner(HeuristicSearch):
 		self.hard_min_radius  = float(rospy.get_param("~hard_min_radius"))
 		self.heuristic_bias   = float(rospy.get_param("~fp_heuristic_bias"))
 		self.min_goal_overlap = float(rospy.get_param("~min_goal_overlap"))
-		self.half_space_theta = float(rospy.get_param("~half_space_theta"))
+		self.half_space_theta = float(rospy.get_param("~half_space_theta", 0))
 		self.exploration_coeff= float(rospy.get_param("~fp_exploration_coeff"))
 		self.max_circle_radius= float(rospy.get_param("~fp_max_circle_radius"))
 

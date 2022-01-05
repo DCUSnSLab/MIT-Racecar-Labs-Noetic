@@ -5,12 +5,12 @@
 ### 시뮬레이터
 
 아래 주소로 이동 후 설치
-http://itgit.cu.ac.kr/AutonomousDriving/MIT-Simulator-Noetic
+https://github.com/DCUSnSLab/MIT_Simulator_ROS_noetic
 
 ### 파티클 필터
 
 아래 주소로 이동 후 설치
-http://itgit.cu.ac.kr/AutonomousDriving/MIT_Particle-filter
+https://github.com/DCUSnSLab/MIT_Particle_filter
 
 소스코드 다운로드 및 빌드
 ```
@@ -54,5 +54,3 @@ roslaunch ta_lab6 follow_trajectory.launch
 
 //TODO : Kinetic에 맞게 설정된 Dependency 설치 파일 수정 부분 설명 및 설치 방법 작성 필요
 // 해당 시뮬레이터와 아래 파티클 필터를 사용한 Localization 방법 설명
-
-// Particle filter repo : http://itgit.cu.ac.kr/AutonomousDriving/MIT_Particle-filter

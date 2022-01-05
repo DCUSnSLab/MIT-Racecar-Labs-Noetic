@@ -15,7 +15,7 @@ https://github.com/DCUSnSLab/MIT_Particle_filter
 소스코드 다운로드 및 빌드
 ```
 cd catkin_ws/src
-git clone http://itgit.cu.ac.kr/AutonomousDriving/MIT-Racecar-Labs-Noetic
+git clone https://github.com/DCUSnSLab/MIT_Racecar_Labs_Noetic.git
 cd .. & catkin_make
 ```
 

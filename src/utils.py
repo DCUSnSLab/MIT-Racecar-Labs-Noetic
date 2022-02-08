@@ -159,7 +159,7 @@ class Map(object):
 
 	def get_exploration_occupancy_grid(self):
 		msg = OccupancyGrid()
-		msg.header = make_header("/map")
+		msg.header = make_header("map")
 		msg.info = self.map_info
 		buff = self.exploration_buffer.astype(np.int8)
 		buff[buff == 0] = 100
@@ -221,7 +221,7 @@ def marker_clear_all(frame_id):
 
 def marker_from_circle(circle, index=0, linewidth=0.1, color=ColorRGBA(1, 0, 0, 1), z=0., lifetime=10.0):
 	marker = Marker()
-	marker.header = make_header("/map")
+	marker.header = make_header("map")
 
 	marker.ns = "Markers_NS"
 	marker.id = index
@@ -244,7 +244,7 @@ def marker_from_circle(circle, index=0, linewidth=0.1, color=ColorRGBA(1, 0, 0, 
 
 def marker_from_point_radius(point, radius, index=0, linewidth=0.1, color=ColorRGBA(1, 0, 0, 1), z=0., lifetime=10.0):
 	marker = Marker()
-	marker.header = make_header("/map")
+	marker.header = make_header("map")
 
 	marker.ns = "Speed_NS"
 	marker.id = index
@@ -765,7 +765,7 @@ class LineTrajectory(object):
 
 	def toPolygon(self):
 		poly = PolygonStamped()
-		poly.header = make_header("/map")
+		poly.header = make_header("map")
 		use_speed_profile = len(self.speed_profile) == len(self.points)
 		for i in range(len(self.points)):
 			p = self.points[i]
@@ -784,7 +784,7 @@ class LineTrajectory(object):
 		if self.visualize and self.speed_pub.get_num_connections() > 0:
 			print("Publishing speed profile")
 			marker = Marker()
-			marker.header = make_header("/map")
+			marker.header = make_header("map")
 			marker.ns = self.viz_namespace + "/trajectory"
 			marker.id = 0
 			marker.type = 2 # sphere
@@ -814,7 +814,7 @@ class LineTrajectory(object):
 		if self.visualize and self.end_pub.get_num_connections() > 0:
 			print("Publishing end point")
 			marker = Marker()
-			marker.header = make_header("/map")
+			marker.header = make_header("map")
 			marker.ns = self.viz_namespace + "/trajectory"
 			marker.id = 1
 			marker.type = 2 # sphere
@@ -844,19 +844,34 @@ class LineTrajectory(object):
 		if self.visualize and self.traj_pub.get_num_connections() > 0:
 			print("Publishing trajectory")
 			marker = Marker()
-			marker.header = make_header("/map")
+			marker.header = make_header("map")
 			marker.ns = self.viz_namespace + "/trajectory"
 			marker.id = 2
-			marker.type = 4 # line strip
+			marker.type = 8 # line strip
 			marker.lifetime = rospy.Duration.from_sec(duration)
 			if should_publish:
 				marker.action = 0
 				marker.scale.x = 0.3
 				marker.scale.y = 0.3
 				marker.scale.z = 0.05
-				marker.color.r = 1.0
-				marker.color.g = 1.0
-				marker.color.b = 1.0
+				if self.viz_namespace == "/found_trajectory":
+					marker.color.r = 0.0
+					marker.color.g = 1.0
+					marker.color.b = 0.0
+				elif self.viz_namespace == "/rough_trajectory":
+					print("rough")
+					marker.color.r = 1.0
+					marker.color.g = 0.0
+					marker.color.b = 0.0
+				elif self.viz_namespace == "/fast_trajectory":
+					print("fast")
+					marker.color.r = 0.0
+					marker.color.g = 1.0
+					marker.color.b = 1.0
+				else:
+					marker.color.r = 1.0
+					marker.color.g = 1.0
+					marker.color.b = 1.0
 				marker.color.a = 0.5
 				for p in self.points:
 					pt = Point32()
@@ -876,7 +891,7 @@ class LineTrajectory(object):
 		if self.visualize and self.speed_pub.get_num_connections() > 0:
 			if self.dirty():
 				self.make_np_array()
-			markers = [marker_clear_all("/map")]
+			markers = [marker_clear_all("map")]
 			normed_speeds = np.array(self.speed_profile) / np.max(self.speed_profile)
 			last_speed = 0.0
 			for i, speed in enumerate(normed_speeds):

@@ -106,6 +106,7 @@ class Map(object):
 		self.exploration_buffer.fill(0)
 
 	def add_circle_to_exploration_buffer(self, circle):
+		# 생성된 원을 exploration 버퍼에 추가
 		''' marks a circular region of the exploration_buffer as explored
 		'''
 		position = np.array([circle.center.copy()])
@@ -117,6 +118,7 @@ class Map(object):
 		self.exploration_buffer[x_center-half_size:x_center+half_size+1, y_center-half_size:y_center+half_size+1] += mask
 
 	def add_circles_to_exploration_buffer(self, poses, radii, exp_coeff=None):
+		# 위 함수와 동일하지만, 여러 원을 동시에 추가한다.
 		if exp_coeff == None:
 			exp_coeff = self.exploration_coeff
 		world_to_map(poses, self.map_info)
@@ -882,9 +884,7 @@ class LineTrajectory(object):
 			else:
 				# delete
 				marker.action = 2
-			print()
-			print(marker)
-			print()
+
 			self.traj_pub.publish(marker)
 		elif self.traj_pub.get_num_connections() == 0:
 			print("Not publishing trajectory, no subscribers")

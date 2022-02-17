@@ -67,9 +67,12 @@ class HeuristicSearch(object):
 		# print "Expand node:", parent_state
 
 		if neighbor_callback:
+			# neighbor_callback
+			# - SE : 인접한 neighbor들의 pose와 반지름 길이를 지도에 기록하는 콜백 함수 추가?
+			# - PP : SE와 동일
 			neighbor_states = []
 		
-		for neighbor_state in self.neighbors(parent_state.state):
+		for neighbor_state in self.neighbors(parent_state.state): # 현재 위치 state를 기준으로 인접한 neighbor_state를 순회한다
 			# prune any path segments that are bound to fail
 			if not self.should_bail(neighbor_state, self.goal_state) and self.is_admissible(neighbor_state):
 				# should_bail : 미구현함수?
@@ -97,10 +100,10 @@ class HeuristicSearch(object):
 				
 				self.neighbor_count += 1
 
-				score = nss.cost + nss.heuristic
-				if self.goal_met(neighbor_state, self.goal_state):
+				score = nss.cost + nss.heuristic # nss
+				if self.goal_met(neighbor_state, self.goal_state): # 현재 확인중인 이웃 지점(neighbor_state) goal인 경우
 					# print "Met goal:", neighbor_state
-					heapq.heappush(self.found_paths, (score, next(self.tiebreaker), nss))
+					heapq.heappush(self.found_paths, (score, next(self.tiebreaker), nss)) # found_paths 리스트에 neighbor_state의 인스턴스 nss를 추가
 				else:
 					# print (score, len(self.frontier))
 					heapq.heappush(self.frontier, (score, next(self.tiebreaker), nss))
@@ -560,6 +563,12 @@ class FindTrajectory(object):
 		'''
 		self.goal = np.array([msg.pose.position.x, msg.pose.position.y, utils.quaternion_to_angle(msg.pose.orientation)])
 		print("\nNew goal:", self.goal)
+
+		print()
+		print("self.map.memoized :", self.map.memo_table)
+		print()
+		print("self.map.memo_table(len) :", len(self.map.memo_table))
+		print()
 		
 		if self.has_recent_pose():
 			# perform the first search

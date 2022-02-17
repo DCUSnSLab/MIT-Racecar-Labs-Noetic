@@ -1,3 +1,4 @@
 tmp/
 trajectories/
+.idea/
 *.pyc

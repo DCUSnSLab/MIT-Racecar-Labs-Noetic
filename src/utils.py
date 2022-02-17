@@ -841,7 +841,7 @@ class LineTrajectory(object):
 
 	def publish_trajectory(self, duration=0.0):
 		should_publish = len(self.points) > 1
-		if self.visualize and self.traj_pub.get_num_connections() > 0:
+		if self.visualize or self.traj_pub.get_num_connections() > 0:
 			print("Publishing trajectory")
 			marker = Marker()
 			marker.header = make_header("map")
@@ -882,6 +882,9 @@ class LineTrajectory(object):
 			else:
 				# delete
 				marker.action = 2
+			print()
+			print(marker)
+			print()
 			self.traj_pub.publish(marker)
 		elif self.traj_pub.get_num_connections() == 0:
 			print("Not publishing trajectory, no subscribers")

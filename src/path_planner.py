@@ -28,10 +28,12 @@ class HeuristicSearch(object):
 		self.goal_state = self.goal()
 		self.step_count = 0
 		if self.make_tree:
+			print("make_tree True")
 			self.tree_root = TreeNode(state=start_state, children=[])
 			ss = SearchNodeTree(state=start_state, parent=None, cost=0, tree_node=self.tree_root, \
 						heuristic=self.heuristic(start_state, self.goal_state))
 		else:
+			print("make_tree False")
 			ss = SearchNode(state=start_state, parent=None, cost=0, \
 						heuristic=self.heuristic(start_state, self.goal_state))
 
@@ -42,12 +44,12 @@ class HeuristicSearch(object):
 		heapq.heappush(self.frontier, (ss.heuristic, next(self.tiebreaker), ss))
 
 	def search(self, time_limit):
-		if self.goal_state == None:
+		if self.goal_state == None: # Goal이 없는 경우 search는 수행하지 않는다
 			return None
 		
 		start_time = time.time()
 		# extend nodes until the time limit is reached
-		while time.time() - start_time < time_limit:
+		while time.time() - start_time < time_limit: # 제한된 시간 초과 시 _step 함수 호출을 중지한다
 			if len(self.frontier) == 0:
 				print("Search failed, bailing early")
 				return
@@ -59,6 +61,7 @@ class HeuristicSearch(object):
 		"""
 		# Pop the best path to split.
 		parent_score, parent_count, parent_state = heapq.heappop(self.frontier)
+		# 각각 거리값, 부모 노드 수, 현재 상태를 나타내는 것 처럼 보임
 		if self.make_tree:
 			parent_tree_node = parent_state.tree_node
 		# print "Expand node:", parent_state
@@ -69,9 +72,15 @@ class HeuristicSearch(object):
 		for neighbor_state in self.neighbors(parent_state.state):
 			# prune any path segments that are bound to fail
 			if not self.should_bail(neighbor_state, self.goal_state) and self.is_admissible(neighbor_state):
+				# should_bail : 미구현함수?
+				# is_admissible :
+				# - SpaceExploration은 neighbor_state의 반지름이 self.hard_min_radius보다 큰 경우 True 리턴, 아니면 False 리턴
+				# - PathPlanner도 마찬가지임
+				# 따라서 해당 if 블록은 인접한 neighbor_state의 반지름이 self.hard_min_radius보다 작아야 수행됨
+
 				# print "   neighbor: ", neighbor_state
 				# build the tree representation of the search
-				if self.make_tree:
+				if self.make_tree: # True, False 일 때의 차이점은 아직 잘 모르겠음
 					ntn = TreeNode(state=neighbor_state, children=[])
 					parent_tree_node.children.append(ntn)
 				
@@ -173,8 +182,10 @@ class SpaceExploration(HeuristicSearch):
 		self.branch_factor    = int(rospy.get_param("~branch_factor", 31))
 		self.min_turn_radius  = float(rospy.get_param("~minimum_turn_radius", 0.3))
 		self.soft_min_radius  = float(rospy.get_param("~soft_min_radius", 0.8))
+		#self.soft_min_radius = float(rospy.get_param("~soft_min_radius", 0.05))
 		self.soft_min_penalty = float(rospy.get_param("~soft_min_penalty", 1.7))
 		self.hard_min_radius  = float(rospy.get_param("~hard_min_radius", 0.3))
+		#self.hard_min_radius = float(rospy.get_param("~hard_min_radius", 0.01))
 		self.heuristic_bias   = float(rospy.get_param("~heuristic_bias", 1.9))
 		self.min_goal_overlap = float(rospy.get_param("~min_goal_overlap", 0.05))
 		self.half_space_theta = float(rospy.get_param("~half_space_theta", 0))
@@ -187,7 +198,7 @@ class SpaceExploration(HeuristicSearch):
 		self.next_goal = None
 		
 		# initialize super
-		super(SpaceExploration, self).__init__(make_tree=False)
+		super(SpaceExploration, self).__init__(make_tree=True)
 
 	def add_states_to_exploration_buffer(self, neighbor_circles):
 		if len(neighbor_circles):
@@ -283,7 +294,7 @@ class PathPlanner(HeuristicSearch):
 		self.rough_trajectory = None
 		
 		# initialize super
-		super(PathPlanner, self).__init__(make_tree=False)
+		super(PathPlanner, self).__init__(make_tree=True)
 
 	def set_heursitic_trajectory(self, trajectory):
 		self.rough_trajectory = trajectory
@@ -355,6 +366,8 @@ class PathPlanner(HeuristicSearch):
 		start_time = time.time()
 
 		# extend nodes until the time limit is reached
+		print("Len :", len(self.found_paths))
+
 		while time.time() - start_time < time_limit and not len(self.found_paths):
 			if len(self.frontier) == 0:
 				print("Search failed, bailing early")
@@ -557,6 +570,7 @@ class FindTrajectory(object):
 				self.rough_trajectory.update_distances()
 				self.found_trajectory.points = self.rough_trajectory.points
 				self.found_trajectory.publish_viz()
+				self.rough_trajectory.publish_viz()
 				
 				if self.should_refine_trajectory:
 					self.refine_trajectory()
@@ -567,6 +581,7 @@ class FindTrajectory(object):
 						self.found_trajectory.points = self.fast_trajectory.points
 
 				if self.publish_trajectory:
+					test = self.found_trajectory.toPolygon()
 					self.traj_pub.publish(self.found_trajectory.toPolygon())
 
 				if self.save_trajectory:

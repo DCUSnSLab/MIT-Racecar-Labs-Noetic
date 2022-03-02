@@ -13,6 +13,8 @@ from visualization_msgs.msg import MarkerArray, Marker
 from std_msgs.msg import ColorRGBA
 from nav_msgs.srv import GetMap
 
+import cProfile
+
 import matplotlib.pyplot as plt
 
 class HeuristicSearch(object):
@@ -597,58 +599,54 @@ class FindTrajectory(object):
 		print("visualize")
 
 	def goal_point_callback(self, msg):
-		t = time.time()
-		''' Initialize path search. First performs and exploration search, and then a second search which uses
-		    the result from the first search as a heuristic. Roughly respects dynamic constraints of the car.
-		'''
-		self.goal = np.array([msg.pose.position.x, msg.pose.position.y, utils.quaternion_to_angle(msg.pose.orientation)])
-		print("\nNew goal:", self.goal)
+		with cProfile.Profile() as pr:
+			t = time.time()
+			''' Initialize path search. First performs and exploration search, and then a second search which uses
+				the result from the first search as a heuristic. Roughly respects dynamic constraints of the car.
+			'''
+			self.goal = np.array([msg.pose.position.x, msg.pose.position.y, utils.quaternion_to_angle(msg.pose.orientation)])
+			print("\nNew goal:", self.goal)
 
-		# print()
-		# print("self.map.memoized :", self.map.memo_table)
-		# print()
-		# print("self.map.memo_table(len) :", len(self.map.memo_table))
-		# print()
-		
-		if self.has_recent_pose():
-			# perform the first search
-			self.find_rough_trajectory() # SpaceExploration class
-			if self.circle_path:
-				self.rough_trajectory.clear()
-				self.rough_trajectory.points = [x.center for x in self.circle_path.states] # 생성된 원의 중심점 좌표들을 points에 저장
-				self.rough_trajectory.update_distances()
-				self.found_trajectory.points = self.rough_trajectory.points
-				self.found_trajectory.publish_viz()
-				self.rough_trajectory.publish_viz()
-				
-				if self.should_refine_trajectory:
-					self.refine_trajectory()
-					if self.fast_path:
-						self.fast_trajectory.clear()
-						self.fast_trajectory.points = [x.center for x in self.fast_path.states]
-						self.fast_trajectory.update_distances()
-						self.found_trajectory.points = self.fast_trajectory.points
+			if self.has_recent_pose():
+				# perform the first search
+				self.find_rough_trajectory() # SpaceExploration class
+				if self.circle_path:
+					self.rough_trajectory.clear()
+					self.rough_trajectory.points = [x.center for x in self.circle_path.states] # 생성된 원의 중심점 좌표들을 points에 저장
+					self.rough_trajectory.update_distances()
+					self.found_trajectory.points = self.rough_trajectory.points
+					self.found_trajectory.publish_viz()
+					self.rough_trajectory.publish_viz()
 
-				if self.publish_trajectory:
-					test = self.found_trajectory.toPolygon()
-					self.traj_pub.publish(self.found_trajectory.toPolygon())
+					if self.should_refine_trajectory:
+						self.refine_trajectory()
+						if self.fast_path:
+							self.fast_trajectory.clear()
+							self.fast_trajectory.points = [x.center for x in self.fast_path.states]
+							self.fast_trajectory.update_distances()
+							self.found_trajectory.points = self.fast_trajectory.points
 
-				if self.save_trajectory:
-					self.found_trajectory.save(os.path.join(self.save_path, time.strftime("%Y-%m-%d-%H-%M-%S") + ".traj"))
+					if self.publish_trajectory:
+						test = self.found_trajectory.toPolygon()
+						self.traj_pub.publish(self.found_trajectory.toPolygon())
 
-				self.found_trajectory.update_distances()
-				self.found_trajectory.publish_viz()
-			self.visualize()
-		else:
-			print("No recent odometry, skipping search!")
+					if self.save_trajectory:
+						self.found_trajectory.save(os.path.join(self.save_path, time.strftime("%Y-%m-%d-%H-%M-%S") + ".traj"))
 
-		print()
-		print("... goal_point_callback terminated in:", time.time() - t, "seconds")
-		print()
+					self.found_trajectory.update_distances()
+					self.found_trajectory.publish_viz()
+				self.visualize()
+			else:
+				print("No recent odometry, skipping search!")
+
+			print()
+			print("... goal_point_callback terminated in:", time.time() - t, "seconds")
+			print()
+		pr.dump_stats("home/ros/pp_log.pstats")
+		pr.print_stats()
 
 	def find_rough_trajectory(self):
 		print("Finding rough trajectory")
-		rough_t = time.time()
 		self.space_explorer.set_goal(self.goal)
 		self.space_explorer.reset(self.last_pose.copy())
 		t = time.time()
@@ -661,11 +659,9 @@ class FindTrajectory(object):
 		self.circle_path = self.space_explorer.best()
 		if self.circle_path == None:
 			print("...search failed")
-		print("... rough_trajectory terminated in:", time.time() - rough_t, "seconds")
 
 	def refine_trajectory(self):
 		print("Refining trajectory")
-		refine_t = time.time()
 		self.rough_trajectory.make_np_array()
 		self.path_planner.set_heursitic_trajectory(self.rough_trajectory)
 		self.path_planner.set_goal(self.goal)
@@ -681,7 +677,6 @@ class FindTrajectory(object):
 		self.fast_path = self.path_planner.best()
 		if self.fast_path == None:
 			print("... search failed")
-		print("... refine_trajectory terminated in:", time.time() - refine_t, "seconds")
 
 	def has_recent_pose(self):
 		# return True # this is useful for debugging
@@ -702,6 +697,5 @@ def make_flamegraph(filterx=None):
 
 if __name__=="__main__":
 	rospy.init_node("trajectory_search")
-	# make_flamegraph(r"goal_point_callback")
 	pf = FindTrajectory()
 	rospy.spin()

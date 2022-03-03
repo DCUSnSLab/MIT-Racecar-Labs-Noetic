@@ -84,8 +84,9 @@ class Map(object):
 	def get_distances(self, queries, check_bounds=False, coord_convert=True):
 		''' Given a Nx3 (x,y,theta) numpy array of queries, this returns the distances to the nearest obstacle at each query position.
 		'''
+
 		if coord_convert:
-			q = queries.copy()
+			q = queries.copy() # deep copy
 			world_to_map(q, self.map_info)
 			q = np.round(q[:,:2]).astype(int)
 		else:
@@ -675,6 +676,7 @@ class LineTrajectory(object):
 
 	# compute the distances along the path for all path segments beyond those already computed
 	def update_distances(self):
+		t = time.time()
 		num_distances = len(self.distances)
 		num_points = len(self.points)
 
@@ -686,6 +688,8 @@ class LineTrajectory(object):
 				p1 = self.points[i]
 				delta = np.array([p0[0]-p1[0],p0[1]-p1[1]])
 				self.distances.append(self.distances[i-1] + np.linalg.norm(delta))
+
+		print("\t\t{:.3f} Seconds update_distances()".format(time.time() - t))
 
 	def distance_to_end(self, t):
 		if not len(self.points) == len(self.distances):
@@ -844,7 +848,7 @@ class LineTrajectory(object):
 	def publish_trajectory(self, duration=0.0):
 		should_publish = len(self.points) > 1
 		if self.visualize or self.traj_pub.get_num_connections() > 0:
-			print("Publishing trajectory")
+			# print("Publishing trajectory")
 			marker = Marker()
 			marker.header = make_header("map")
 			marker.ns = self.viz_namespace + "/trajectory"
@@ -861,12 +865,10 @@ class LineTrajectory(object):
 					marker.color.g = 1.0
 					marker.color.b = 0.0
 				elif self.viz_namespace == "/rough_trajectory":
-					print("rough")
 					marker.color.r = 1.0
 					marker.color.g = 0.0
 					marker.color.b = 0.0
 				elif self.viz_namespace == "/fast_trajectory":
-					print("fast")
 					marker.color.r = 0.0
 					marker.color.g = 1.0
 					marker.color.b = 1.0

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import pstats
 
 import rospy
 import numpy as np
@@ -14,6 +15,7 @@ from std_msgs.msg import ColorRGBA
 from nav_msgs.srv import GetMap
 
 import cProfile
+from pstats import SortKey
 
 import matplotlib.pyplot as plt
 
@@ -30,12 +32,10 @@ class HeuristicSearch(object):
 		self.goal_state = self.goal()
 		self.step_count = 0
 		if self.make_tree:
-			print("make_tree True")
 			self.tree_root = TreeNode(state=start_state, children=[])
 			ss = SearchNodeTree(state=start_state, parent=None, cost=0, tree_node=self.tree_root, \
 						heuristic=self.heuristic(start_state, self.goal_state))
 		else:
-			print("make_tree False")
 			ss = SearchNode(state=start_state, parent=None, cost=0, \
 						heuristic=self.heuristic(start_state, self.goal_state))
 
@@ -58,21 +58,30 @@ class HeuristicSearch(object):
 			self._step()
 
 	def _step(self, make_tree=False, neighbor_callback=None):
-		searchnode_time = 0.0
-		heappush_time = 0.0
-		step_t = time.time()
+		calc_time = np.zeros(9, dtype=np.float64)
+		# index
+		# 0 : heappop
+		# 1 : maketree
+		# 2 : neighbors
+		# 3 : is_admissible
+		# 4 : neighbors_cbappend
+		# 5 : heuristic
+		# 6 : heappush
+		# 7 : neighbors_cb
+		# 8 : append
 		""" Perform one iteration of heuristic search - extend a single node.
 			Requires that self.frontier is not empty.
 		"""
 		# Pop the best path to split.
 		t = time.time()
 		parent_score, parent_count, parent_state = heapq.heappop(self.frontier)
-		print("heapq.heappop(self.frontier) terminated in:", time.time() - t, "seconds")
+		calc_time[0] = calc_time[0] + (time.time() - t)
 		# 각각 거리값, 부모 노드 수, 현재 상태를 나타내는 것 처럼 보임
-		t = time.time()
 		if self.make_tree:
+			t = time.time()
 			parent_tree_node = parent_state.tree_node
-		print("if self.make_tree: terminated in:", time.time() - t, "seconds")
+			calc_time[1] = calc_time[1] + (time.time() - t)
+
 		# print "Expand node:", parent_state
 
 		if neighbor_callback:
@@ -80,10 +89,21 @@ class HeuristicSearch(object):
 			# - SE : 인접한 neighbor들의 pose와 반지름 길이를 지도에 기록하는 콜백 함수 추가?
 			# - PP : SE와 동일
 			neighbor_states = []
-		
+
+		init_neighbors = False
+		init_admissible = False
+
+		t = time.time()
 		for neighbor_state in self.neighbors(parent_state.state): # 현재 위치 state를 기준으로 인접한 neighbor_state를 순회한다
+			if init_neighbors is False:
+				calc_time[2] = calc_time[2] + (time.time() - t)
+				init_neighbors = True
 			# prune any path segments that are bound to fail
+			t = time.time()
 			if not self.should_bail(neighbor_state, self.goal_state) and self.is_admissible(neighbor_state):
+				if init_admissible is False:
+					calc_time[3] = calc_time[3] + (time.time() - t)
+					init_admissible = True
 				# should_bail : 미구현함수 무조건 False 리턴
 				# is_admissible :
 				# - SpaceExploration은 neighbor_state의 반지름이 self.hard_min_radius보다 큰 경우 True 리턴, 아니면 False 리턴
@@ -93,8 +113,7 @@ class HeuristicSearch(object):
 				# print "   neighbor: ", neighbor_state
 				# build the tree representation of the search
 
-				t = time.time() # Calc SearchNode time
-
+				heuristic_t = time.time() # Heuristic
 				if self.make_tree: # True, False 일 때의 차이점은 아직 잘 모르겠음
 					ntn = TreeNode(state=neighbor_state, children=[])
 					parent_tree_node.children.append(ntn)
@@ -108,10 +127,12 @@ class HeuristicSearch(object):
 						heuristic=self.heuristic(neighbor_state, self.goal_state))
 
 				if neighbor_callback:
+					t = time.time()  # neighbor_cbappend
 					neighbor_states.append(neighbor_state)
+					calc_time[4] = calc_time[4] + (time.time() - t)
 
-				#print("SearchNode terminated in:", time.time() - t, "seconds")
-				searchnode_time = searchnode_time + (time.time() - t)
+				calc_time[5] = calc_time[5] + (time.time() - heuristic_t)
+				# print("\t\t\t\t{:.3f} Seconds SearchNode total".format(time.time() - t))
 				self.neighbor_count += 1
 
 				t = time.time() # Calc heappush time
@@ -122,18 +143,23 @@ class HeuristicSearch(object):
 				else:
 					# print (score, len(self.frontier))
 					heapq.heappush(self.frontier, (score, next(self.tiebreaker), nss))
+
 				#print("heapq.heappush() terminated in:", time.time() - t, "seconds")
-				heappush_time = heappush_time + (time.time() - t)
+				calc_time[6] = calc_time[6] + (time.time() - t)
+
 
 		if neighbor_callback:
+			t = time.time()  # neighbor_cb
 			neighbor_callback(neighbor_states)
+			calc_time[7] = calc_time[7] + (time.time() - t)
 		
 		# self.map.add_circle_to_exploration_buffer(parent_state.state)
+		t = time.time()  # Calc append
 		self.closed_set.append(parent_state.state)
+		calc_time[8] = calc_time[8] + (time.time() - t)
 		self.step_count += 1
-		print("_step terminated in:", time.time() - step_t, "seconds")
-		print("total searchnode :", searchnode_time)
-		print("total heappush :", heappush_time)
+
+		return calc_time
 
 	def best(self):
 		if len(self.found_paths) > 0:
@@ -276,15 +302,21 @@ class SpaceExploration(HeuristicSearch):
 	def search(self, time_limit):
 		# same as before, but this returns early if paths are found
 		start_time = time.time()
+		step_total = 0.0
 
 		# extend nodes until the time limit is reached
 		while time.time() - start_time < time_limit and not len(self.found_paths):
 			if len(self.frontier) == 0:
 				print("Search failed, bailing early")
 				return
+			t = time.time()
 			self._step(neighbor_callback=self.add_states_to_exploration_buffer)
+			step_total = step_total + (time.time() - t)
+
+		print("\t\t\t{:.3f} Seconds _step() total".format(step_total))
 
 	def neighbors(self, state):
+		t = time.time()
 		max_angle = utils.max_angle(self.min_turn_radius, state.radius)
 		self.thetas = np.linspace(-max_angle,max_angle, num=self.branch_factor)
 		self.euclidean_neighbors[:,0] = state.radius * np.cos(self.thetas + state.angle) + state.center[0]
@@ -299,6 +331,7 @@ class SpaceExploration(HeuristicSearch):
 
 		neighbors = list(map(lambda c,r,t: Circle(center=c.copy(), radius=r, angle=state.angle + t, deflection=t), 
 			self.euclidean_neighbors[mask,:], radii[mask], self.thetas[mask]))
+		# print("\t\t\t\t{:.3f} Seconds neighbors()".format(time.time() - t))
 		return neighbors
 
 class PathPlanner(HeuristicSearch):
@@ -395,14 +428,46 @@ class PathPlanner(HeuristicSearch):
 		# same as before, but this returns early if paths are found
 		start_time = time.time()
 
+		calc_time = np.zeros(4, dtype=np.float64)
+
+		step_total = 0.0
+		heuristic_total = 0.0
+		heappush_total = 0.0
+		append_total = 0.0
+		heappop_total = 0.0
+		neighbors_total = 0.0
+		admissible_total = 0.0
+		neighbors_cbappend_total = 0.0
+		neighbors_cb_total = 0.0
+
 		# extend nodes until the time limit is reached
-		print("Len :", len(self.found_paths))
+		# print("Len :", len(self.found_paths))
 
 		while time.time() - start_time < time_limit and not len(self.found_paths):
 			if len(self.frontier) == 0:
 				print("Search failed, bailing early")
 				return
-			self._step(neighbor_callback=self.add_states_to_exploration_buffer)
+			t = time.time()
+			heappop, maketree, neighbors, is_admissible, neighbors_cbappend, heuristic, heappush, neighbors_cb, append = self._step(neighbor_callback=self.add_states_to_exploration_buffer)
+
+			step_total = step_total + (time.time() - t)
+			heuristic_total = heuristic_total + heuristic
+			heappush_total = heappush_total + heappush
+			append_total = append_total + append
+			heappop_total = heappop_total + heappop
+			neighbors_total = neighbors_total + neighbors
+			admissible_total = admissible_total + is_admissible
+			neighbors_cbappend_total = neighbors_cbappend_total + neighbors_cbappend
+			neighbors_cb_total = neighbors_cb_total + neighbors_cb
+		print("\t\t\t\t{:.3f} Seconds heuristic total".format(heuristic_total))
+		print("\t\t\t\t{:.3f} Seconds heappush total".format(heappush_total))
+		print("\t\t\t\t{:.3f} Seconds append total".format(append_total))
+		print("\t\t\t\t{:.3f} Seconds heappop total".format(heappop_total))
+		print("\t\t\t\t{:.3f} Seconds neighbors total".format(neighbors_total))
+		print("\t\t\t\t{:.3f} Seconds is_admissible total".format(admissible_total))
+		print("\t\t\t\t{:.3f} Seconds neighbors_cbappend total".format(neighbors_cbappend_total))
+		print("\t\t\t\t{:.3f} Seconds neighbors_cb total".format(neighbors_cb_total))
+		print("\t\t\t{:.3f} Seconds _step() total".format(step_total))
 
 	def add_states_to_exploration_buffer(self, neighbor_circles):
 		if len(neighbor_circles):
@@ -438,9 +503,9 @@ class PathPlanner(HeuristicSearch):
 		# perform coordinate space conversion here and then index into the exploration and permissible
 		# buffers to prune states which are not permissible or already explored
 		euc = euclidean_neighbors.copy()
-		utils.world_to_map(euc, self.map.map_info)
+		utils.world_to_map(euc, self.map.map_info) ## 부하량 2순위
 		euc = np.round(euc).astype(int) # 넘파이 배열 euc에 저장된 값을 정수로 변환
-		radii = self.map.get_distances(euc, coord_convert=False, check_bounds=True) - 0.05
+		radii = self.map.get_distances(euc, coord_convert=False, check_bounds=True) - 0.05 ## 부하량 1순위
 		# euc에 저장된 값들을 사용해서 지도 내 실제 이동 거리 계산?
 		radii = np.clip(radii, 0.0, self.max_circle_radius)
 		# radii에 저장된 값 중에서 0.0보다 작은 값은 0으로,
@@ -453,7 +518,6 @@ class PathPlanner(HeuristicSearch):
 		neighbors = list(map(lambda c,r,t: Circle(center=c.copy(), radius=r, angle=state.angle + t, deflection=t), 
 			euclidean_neighbors[mask,:], radii[mask], thetas[mask]))
 
-		# 구한 영역들을
 		return neighbors
 
 class FindTrajectory(object):
@@ -548,7 +612,8 @@ class FindTrajectory(object):
 			
 	def visualize(self):
 		if self.circle_pub.get_num_connections() > 0 and self.circle_path:
-			print("CIRCLE PUB")
+			# print("CIRCLE PUB")
+
 			# root = self.space_explorer.tree_root
 			# markers = [utils.marker_clear_all("/map")]
 			# explored = self.non_overlapping_paths(root)
@@ -573,7 +638,8 @@ class FindTrajectory(object):
 			self.circle_pub.publish(marker_array)
 
 		if self.should_refine_trajectory and self.fast_circle_pub.get_num_connections() > 0 and self.fast_path:
-			print("FAST CIRCLE PUB")
+			# print("FAST CIRCLE PUB")
+
 			# root = self.path_planner.tree_root
 			# markers = [utils.marker_clear_all("/map")]
 			# explored = self.non_overlapping_paths(root)
@@ -596,87 +662,162 @@ class FindTrajectory(object):
 		# plt.imshow(self.map.exploration_buffer)
 		# plt.imshow(self.map.permissible_region)
 		# plt.show()
-		print("visualize")
 
 	def goal_point_callback(self, msg):
 		with cProfile.Profile() as pr:
-			t = time.time()
+			print()
+			print()
+			cb_t = time.time()
 			''' Initialize path search. First performs and exploration search, and then a second search which uses
 				the result from the first search as a heuristic. Roughly respects dynamic constraints of the car.
 			'''
+			t = time.time()
 			self.goal = np.array([msg.pose.position.x, msg.pose.position.y, utils.quaternion_to_angle(msg.pose.orientation)])
-			print("\nNew goal:", self.goal)
+			print("\t{:.3f} Seconds self.goal = np.array()".format(time.time() - t))
+			# print("\nNew goal:", self.goal)
 
 			if self.has_recent_pose():
 				# perform the first search
+				t = time.time()
 				self.find_rough_trajectory() # SpaceExploration class
+				print("\t{:.3f} Seconds find_rough_trajectory()".format(time.time() - t))
 				if self.circle_path:
+					t = time.time()
 					self.rough_trajectory.clear()
+					print("\t{:.3f} Seconds rough_trajectory.clear()".format(time.time() - t))
+
+					t = time.time()
 					self.rough_trajectory.points = [x.center for x in self.circle_path.states] # 생성된 원의 중심점 좌표들을 points에 저장
+					print("\t{:.3f} Seconds self.rough_trajectory.points = [x.center for x in self.circle_path.states]".format(time.time() - t))
+
+					t = time.time()
 					self.rough_trajectory.update_distances()
+					print("\t{:.3f} Seconds rough_trajectory.update_distances()".format(time.time() - t))
+
+					t = time.time()
 					self.found_trajectory.points = self.rough_trajectory.points
+					print("\t{:.3f} Seconds self.found_trajectory.points = self.rough_trajectory.points".format(time.time() - t))
+
+					t = time.time()
 					self.found_trajectory.publish_viz()
+					print("\t{:.3f} Seconds found_trajectory.publish_viz()".format(time.time() - t))
+
+					t = time.time()
 					self.rough_trajectory.publish_viz()
+					print("\t{:.3f} Seconds rough_trajectory.publish_viz()".format(time.time() - t))
 
 					if self.should_refine_trajectory:
+						t = time.time()
 						self.refine_trajectory()
+						print("\t{:.3f} Seconds refine_trajectory()".format(time.time() - t))
 						if self.fast_path:
+							t = time.time()
 							self.fast_trajectory.clear()
+							print("\t{:.3f} Seconds fast_trajectory.clear()".format(time.time() - t))
+
+							t = time.time()
 							self.fast_trajectory.points = [x.center for x in self.fast_path.states]
+							print("\t{:.3f} Seconds self.fast_trajectory.points = [x.center for x in self.fast_path.states]".format(time.time() - t))
+
+							t = time.time()
 							self.fast_trajectory.update_distances()
+							print("\t{:.3f} Seconds fast_trajectory.update_distances()".format(time.time() - t))
+
+							t = time.time()
 							self.found_trajectory.points = self.fast_trajectory.points
+							print("\t{:.3f} Seconds self.found_trajectory.points = self.fast_trajectory.points".format(time.time() - t))
 
 					if self.publish_trajectory:
+						t = time.time()
 						test = self.found_trajectory.toPolygon()
-						self.traj_pub.publish(self.found_trajectory.toPolygon())
+						print("\t{:.3f} Seconds found_trajectory.toPolygon()".format(time.time() - t))
 
-					if self.save_trajectory:
+						t = time.time()
+						self.traj_pub.publish(self.found_trajectory.toPolygon())
+						print("\t{:.3f} Seconds traj_pub.publish()".format(time.time() - t))
+
+					if self.save_trajectory: # 사용하지 않으므로 시간 측정 X
 						self.found_trajectory.save(os.path.join(self.save_path, time.strftime("%Y-%m-%d-%H-%M-%S") + ".traj"))
 
+					t = time.time()
 					self.found_trajectory.update_distances()
+					print("\t{:.3f} Seconds found_trajectory.update_distances()".format(time.time() - t))
+
+					t = time.time()
 					self.found_trajectory.publish_viz()
+					print("\t{:.3f} Seconds found_trajectory.publish_viz()".format(time.time() - t))
+
+				t = time.time()
 				self.visualize()
+				print("\t{:.3f} Seconds visualize()".format(time.time() - t))
 			else:
 				print("No recent odometry, skipping search!")
 
-			print()
-			print("... goal_point_callback terminated in:", time.time() - t, "seconds")
-			print()
-		pr.dump_stats("home/ros/pp_log.pstats")
-		pr.print_stats()
+			# print("pr.dump_stats('home/ros/pp_log.stats')")
+			# pr.dump_stats("home/ros/pp_log.stats")
+			# print("pr.print_stats()")
+			# pr.sort_stats(SortKey.TIME).print_stats(30)
+			# stats = pstats.Stats(pr).sort_stats('cumtime')
+			# pr.print_stats()
+			# stats.pr.print_stats()
+
+		print("{:.3f} Seconds goal_point_callback terminated in:".format(time.time() - cb_t))
 
 	def find_rough_trajectory(self):
-		print("Finding rough trajectory")
+		# print("Finding rough trajectory")
+		# rough_t = time.time()
+		t = time.time()
 		self.space_explorer.set_goal(self.goal)
+		print("\t\t{:.3f} Seconds space_explorer.set_goal(self.goal)".format(time.time() - t))
+
+		t = time.time()
 		self.space_explorer.reset(self.last_pose.copy())
+		print("\t\t{:.3f} Seconds space_explorer.reset(self.last_pose.copy())".format(time.time() - t))
+
 		t = time.time()
 		self.space_explorer.search(self.exploration_timeout)
-		print("... rough search terminated in:", time.time() - t, "seconds")
+		print("\t\t{:.3f} Seconds space_explorer.search(self.exploration_timeout)".format(time.time() - t))
+		# print("... rough search terminated in:", time.time() - t, "seconds")
 		t = time.time()
-		print("... expanded", self.space_explorer.step_count, "in:", time.time() - t, "seconds")
+		# print("... expanded", self.space_explorer.step_count, "in:", time.time() - t, "seconds")
 		t = time.time()
-		print("... considered", self.space_explorer.neighbor_count, "in:", time.time() - t, "seconds")
+		# print("... considered", self.space_explorer.neighbor_count, "in:", time.time() - t, "seconds")
 		self.circle_path = self.space_explorer.best()
 		if self.circle_path == None:
 			print("...search failed")
+		# print("\t\t{:.3f} Seconds find_rough_trajectory()".format(time.time() - rough_t))
 
 	def refine_trajectory(self):
-		print("Refining trajectory")
+		# print("Refining trajectory")
+		# refine_t = time.time()
+		t = time.time()
 		self.rough_trajectory.make_np_array()
+		print("\t\t{:.3f} Seconds rough_trajectory.make_np_array()".format(time.time() - t))
+
+		t = time.time()
 		self.path_planner.set_heursitic_trajectory(self.rough_trajectory)
+		print("\t\t{:.3f} Seconds path_planner.set_heursitic_trajectory(self.rough_trajectory)".format(time.time() - t))
+
+		t = time.time()
 		self.path_planner.set_goal(self.goal)
+		print("\t\t{:.3f} Seconds path_planner.set_goal(self.goal)".format(time.time() - t))
+
+		t = time.time()
 		self.path_planner.reset(self.last_pose.copy())
+		print("\t\t{:.3f} Seconds path_planner.reset(self.last_pose.copy())".format(time.time() - t))
 
 		t = time.time()
 		self.path_planner.search(self.refining_timeout)
-		print("... refine search terminated in:", time.time() - t, "seconds")
+		print("\t\t{:.3f} Seconds path_planner.search(self.refining_timeout)".format(time.time() - t))
+		# t = time.time()
+		# print("... expanded", self.path_planner.step_count, "in:", time.time() - t, "seconds")
 		t = time.time()
-		print("... expanded", self.path_planner.step_count, "in:", time.time() - t, "seconds")
-		t = time.time()
-		print("... considered", self.path_planner.neighbor_count, "in:", time.time() - t, "seconds")
+		# print("... considered", self.path_planner.neighbor_count, "in:", time.time() - t, "seconds")
 		self.fast_path = self.path_planner.best()
 		if self.fast_path == None:
 			print("... search failed")
+
+		# print("\t\t{:.3f} Seconds refine_trajectory()".format(time.time() - refine_t))
 
 	def has_recent_pose(self):
 		# return True # this is useful for debugging

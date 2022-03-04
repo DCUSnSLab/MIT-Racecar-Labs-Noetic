@@ -352,6 +352,9 @@ class PathPlanner(HeuristicSearch):
 		self.exploration_coeff= float(rospy.get_param("~fp_exploration_coeff", 0.2)) #
 		self.max_circle_radius= float(rospy.get_param("~fp_max_circle_radius", 1.1)) #
 
+		self.neighbors_time = np.zeros(14, dtype=np.float64)
+		self.heuristic_time = np.zeros(2, dtype=np.float64)
+
 		self.map = omap
 		self.next_goal = None
 		self.rough_trajectory = None
@@ -464,10 +467,16 @@ class PathPlanner(HeuristicSearch):
 		print("\t\t\t\t{:.3f} Seconds append total".format(append_total))
 		print("\t\t\t\t{:.3f} Seconds heappop total".format(heappop_total))
 		print("\t\t\t\t{:.3f} Seconds neighbors total".format(neighbors_total))
+		print("\t\t\t\t\t{:.3f} Seconds neighbors - utils.max_angle()".format(self.neighbors_time[0]))
+		print("\t\t\t\t\t{:.3f} Seconds neighbors - np.power()".format(self.neighbors_time[1]))
 		print("\t\t\t\t{:.3f} Seconds is_admissible total".format(admissible_total))
 		print("\t\t\t\t{:.3f} Seconds neighbors_cbappend total".format(neighbors_cbappend_total))
 		print("\t\t\t\t{:.3f} Seconds neighbors_cb total".format(neighbors_cb_total))
 		print("\t\t\t{:.3f} Seconds _step() total".format(step_total))
+
+		# 시간 합 초기화 진행
+		self.neighbors_time = np.zeros(14, dtype=np.float64)
+		self.heuristic_time = np.zeros(2, dtype=np.float64)
 
 	def add_states_to_exploration_buffer(self, neighbor_circles):
 		if len(neighbor_circles):
@@ -484,37 +493,70 @@ class PathPlanner(HeuristicSearch):
 		          the direction tangent to the path arc at the intersection with the circle radius.
 		          For now this works, and is a strict underestimate of the reachable thetas
 		'''
+		t = time.time()
 		max_angle = utils.max_angle(self.min_turn_radius, state.radius)
+		self.neighbors_time[0] = self.neighbors_time[0] + (time.time() - t)
+
+		t = time.time()
 		percentage = np.power(2.0 * self.branch_factor / np.pi, 0.9)
+		self.neighbors_time[1] = self.neighbors_time[1] + (time.time() - t)
+
+		t = time.time()
 		actual_branch_factor = 2*int(max_angle * percentage / 2.0)+1
+		self.neighbors_time[2] = self.neighbors_time[2] + (time.time() - t)
+
+		t = time.time()
 		thetas = np.linspace(-max_angle,max_angle, num=actual_branch_factor) # 생성할 갈래 수?
+		self.neighbors_time[3] = self.neighbors_time[3] + (time.time() - t)
 		# example
 		# max angle = 30
 		# -30 ~ 30 사이 값들에 대한 평균분포를 리스트로 리턴해서 thetas에 저장,
 		# 이 때 생성되는 각도 값들은 actual_branch_factor만큼 생성된다.
 
+		t = time.time()
 		euclidean_neighbors = np.zeros((actual_branch_factor,2))
+		self.neighbors_time[4] = self.neighbors_time[4] + (time.time() - t)
 		# euclidean_neighbors
 		# 원 영역 내에서 이동가능한 점 리스트를 정의하기 위한 리스트
+		t = time.time()
 		euclidean_neighbors[:,0] = state.radius * np.cos(thetas + state.angle) + state.center[0]
+		self.neighbors_time[5] = self.neighbors_time[5] + (time.time() - t)
+
+		t = time.time()
 		euclidean_neighbors[:,1] = state.radius * np.sin(thetas + state.angle) + state.center[1]
+		self.neighbors_time[6] = self.neighbors_time[6] + (time.time() - t)
 		# x, y 각각의 점에 대해서 계산을 수행한다.
 
 		# perform coordinate space conversion here and then index into the exploration and permissible
 		# buffers to prune states which are not permissible or already explored
+		t = time.time()
 		euc = euclidean_neighbors.copy()
+		self.neighbors_time[7] = self.neighbors_time[7] + (time.time() - t)
+
+		t = time.time()
 		utils.world_to_map(euc, self.map.map_info) ## 부하량 2순위
+		self.neighbors_time[8] = self.neighbors_time[8] + (time.time() - t)
+
+		t = time.time()
 		euc = np.round(euc).astype(int) # 넘파이 배열 euc에 저장된 값을 정수로 변환
+		self.neighbors_time[9] = self.neighbors_time[9] + (time.time() - t)
+
+		t = time.time()
 		radii = self.map.get_distances(euc, coord_convert=False, check_bounds=True) - 0.05 ## 부하량 1순위
+		self.neighbors_time[3] = self.neighbors_time[3] + (time.time() - t)
 		# euc에 저장된 값들을 사용해서 지도 내 실제 이동 거리 계산?
+
+		t = time.time()
 		radii = np.clip(radii, 0.0, self.max_circle_radius)
 		# radii에 저장된 값 중에서 0.0보다 작은 값은 0으로,
 		# self.max_circle_radius 보다 큰 값은 self.max_circle_radius 로 변경한다.
+		t = time.time()
 		mask = np.logical_and(np.invert(self.map.get_explored(euc, coord_convert=False)), self.map.get_permissible(euc, coord_convert=False))
 		# euc에 저장된 값들을 사용해서 지도 내에서 해당 위치까지 이동 가능한지 확인 진행
 		# mask에 저장되는 값들은 boolean 값들이 저장됨
 
 		# generate a neighbor state for each of the permissible
+		t = time.time()
 		neighbors = list(map(lambda c,r,t: Circle(center=c.copy(), radius=r, angle=state.angle + t, deflection=t), 
 			euclidean_neighbors[mask,:], radii[mask], thetas[mask]))
 

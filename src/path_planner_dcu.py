@@ -796,27 +796,25 @@ class FindTrajectory(object):
 		self.last_pose_time = time.time()
 
 class DefinedWaypoints():
-	# Nav_test 맵 기준 주요 waypoint 리스트
-	# x y z
-	# 3.764, 0.046, -0.193
-	# -37.097, 0.373, -0.152
-	# -52.644, 0.643, -0.137
-	# -52.49, 10.07, 0.17
-	# -36.878, 9.905, 0.078
-	# -36.285, 29.977, 0.075
 	def __init__(self):
 		self.pub = rospy.Publisher("/defined_waypoints", MarkerArray, queue_size=1)
 		self.waypointlist = MarkerArray()
 
+		# 해당 좌표 리스트들은 향후 특정 파일에서 불러오도록 수정해야 함
 		self.pointlist = [
-			[3.764, 0.046, -0.193],
-			[-37.097, 0.373, -0.152],
-			[-52.644, 0.643, -0.137],
-			[-52.49, 10.07, 0.17],
-			[-36.878, 9.905, 0.078],
-			[-36.285, 29.977, 0.075],
-			[-19.955, 29.829, -0.022],
-			[-19.93, 20.015, -0.023]
+			[3.764, 0.046, 0.0], # 0
+			[-37.097, 0.373, 0.0], # 1
+			[-52.644, 0.643, 0.0],
+			[-52.49, 10.07, 0.0],
+			[-36.878, 9.905, 0.0],
+			[-36.285, 29.977, 0.0],
+			[-19.955, 29.829, 0.0],
+			[-19.93, 20.015, 0.0],
+			[3.80,20.11, 0.0],
+			[5.032, 45.84, 0.0],
+			[-19.35, 45.75, 0.0],
+			[-35.92, 60.98, 0.0],
+			[-51.55, 61.35, 0.0]
 		]
 
 		for idx, point in enumerate(self.pointlist):
@@ -869,9 +867,29 @@ def make_flamegraph(filterx=None):
                                     filter=filterx,
                                     interval=0.001)
 
+class Node():
+	f_score = 0
+	g_score = 0
+	h_score = 0
+	parentnode = None
+
 if __name__=="__main__":
 	rospy.init_node("trajectory_search")
 	dw = DefinedWaypoints()
+
+	nodelist = []
+
+	node1 = Node()
+	node1.g_score = 2
+	node2 = Node()
+	node2.g_score = 55
+
+	nodelist.append(node1)
+	nodelist.append(node2)
+
+	for node in nodelist:
+		print(node.g_score)
+
 	while True:
 		dw.publish()
 	pf = FindTrajectory()

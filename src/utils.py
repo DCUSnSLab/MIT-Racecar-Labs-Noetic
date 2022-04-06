@@ -84,8 +84,9 @@ class Map(object):
 	def get_distances(self, queries, check_bounds=False, coord_convert=True):
 		''' Given a Nx3 (x,y,theta) numpy array of queries, this returns the distances to the nearest obstacle at each query position.
 		'''
+
 		if coord_convert:
-			q = queries.copy()
+			q = queries.copy() # deep copy
 			world_to_map(q, self.map_info)
 			q = np.round(q[:,:2]).astype(int)
 		else:
@@ -106,6 +107,7 @@ class Map(object):
 		self.exploration_buffer.fill(0)
 
 	def add_circle_to_exploration_buffer(self, circle):
+		# 생성된 원을 exploration 버퍼에 추가
 		''' marks a circular region of the exploration_buffer as explored
 		'''
 		position = np.array([circle.center.copy()])
@@ -117,6 +119,7 @@ class Map(object):
 		self.exploration_buffer[x_center-half_size:x_center+half_size+1, y_center-half_size:y_center+half_size+1] += mask
 
 	def add_circles_to_exploration_buffer(self, poses, radii, exp_coeff=None):
+		# 위 함수와 동일하지만, 여러 원을 동시에 추가한다.
 		if exp_coeff == None:
 			exp_coeff = self.exploration_coeff
 		world_to_map(poses, self.map_info)
@@ -673,6 +676,7 @@ class LineTrajectory(object):
 
 	# compute the distances along the path for all path segments beyond those already computed
 	def update_distances(self):
+		t = time.time()
 		num_distances = len(self.distances)
 		num_points = len(self.points)
 
@@ -684,6 +688,8 @@ class LineTrajectory(object):
 				p1 = self.points[i]
 				delta = np.array([p0[0]-p1[0],p0[1]-p1[1]])
 				self.distances.append(self.distances[i-1] + np.linalg.norm(delta))
+
+		print("\t\t{:.3f} Seconds update_distances()".format(time.time() - t))
 
 	def distance_to_end(self, t):
 		if not len(self.points) == len(self.distances):
@@ -841,8 +847,8 @@ class LineTrajectory(object):
 
 	def publish_trajectory(self, duration=0.0):
 		should_publish = len(self.points) > 1
-		if self.visualize and self.traj_pub.get_num_connections() > 0:
-			print("Publishing trajectory")
+		if self.visualize or self.traj_pub.get_num_connections() > 0:
+			# print("Publishing trajectory")
 			marker = Marker()
 			marker.header = make_header("map")
 			marker.ns = self.viz_namespace + "/trajectory"
@@ -859,12 +865,10 @@ class LineTrajectory(object):
 					marker.color.g = 1.0
 					marker.color.b = 0.0
 				elif self.viz_namespace == "/rough_trajectory":
-					print("rough")
 					marker.color.r = 1.0
 					marker.color.g = 0.0
 					marker.color.b = 0.0
 				elif self.viz_namespace == "/fast_trajectory":
-					print("fast")
 					marker.color.r = 0.0
 					marker.color.g = 1.0
 					marker.color.b = 1.0
@@ -882,6 +886,7 @@ class LineTrajectory(object):
 			else:
 				# delete
 				marker.action = 2
+
 			self.traj_pub.publish(marker)
 		elif self.traj_pub.get_num_connections() == 0:
 			print("Not publishing trajectory, no subscribers")

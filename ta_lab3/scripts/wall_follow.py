@@ -14,17 +14,17 @@ from geometry_msgs.msg import Polygon, Point32, PolygonStamped
 RIGHT = 'right'
 LEFT  = 'left'
 
-SHOW_VIS = False
+SHOW_VIS = True
 FAN_ANGLE = np.pi/5.0
 TARGET_DISTANCE = 1.0
 MEDIAN_FILTER_SIZE=141
-KP = 0.4 # distance term
-KD = 0.3  # angle term
+KP = 0.3 # distance term
+KD = 0.1  # angle term
 # KD = 0.5  # angle term
 PUBLISH_LINE = True
 HISTORY_SIZE = 5 # Size of the circular array for smoothing steering commands
 PUBLISH_RATE = 20.0 # number of control commands to publish per second
-SPEED = 1.0
+SPEED = 0.5
 
 EPSILON = 0.000001
 
@@ -161,7 +161,7 @@ class WallFollow():
         while not rospy.is_shutdown():
             drive_msg_stamped = AckermannDriveStamped()
             drive_msg = AckermannDrive()
-            drive_msg.speed = 2.0
+            drive_msg.speed = 0.5
             drive_msg.steering_angle = 0.0
             drive_msg.acceleration = 0
             drive_msg.jerk = 0

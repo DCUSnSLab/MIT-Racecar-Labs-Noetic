@@ -1,14 +1,17 @@
 <launch>
-	<include file="$(find ta_lab5)/launch/map_server.launch"/>
-
-	<node pkg="ta_lab6" type="path_planner.py" name="Trajectory_search">
+	<!-- <include file="$(find ta_lab5)/launch/map_server.launch"/> -->
+	<include file="$(find ta_lab6)/launch/path_planner.launch" />
+	<arg name="racecar_xacro" default="$(find ta_lab6)/urdf/racecar_2.xacro"/>
+		<param name="robot_description" command="xacro --inorder '$(arg racecar_xacro)'"/>
+	<!--node pkg="ta_lab6" type="path_planner.py" name="Trajectory_search" -->
 		<param name="save_trajectory" value="0"/>
 		<param name="save_path" value="$(find ta_lab6)/trajectories/waypoint/"/>
 		<param name="publish" value="1"/>
 		<param name="trajectory_topic" value="/trajectory/current"/>
 
 		<param name="odom_topic" value="/pf/pose/odom"/>
-		
+		<!--param name="odom_topic" value="/vesc/odom"/-->		
+
 		<param name="show_exploration_buffer" value="1"/>
 		<!-- These params are for the circle search -->
 		<param name="branch_factor" value="31"/> <!-- number of neighbors to expand per node -->
@@ -30,5 +33,5 @@
 		<param name="refining_timeout" value="13.0"/>
 		<param name="fp_minimum_turn_radius" value="0.4"/> <!-- defines bounds on exploration -->
 		<param name="fp_max_circle_radius" value="1.1"/>
-	</node>
+	<!--/node -->
 </launch>

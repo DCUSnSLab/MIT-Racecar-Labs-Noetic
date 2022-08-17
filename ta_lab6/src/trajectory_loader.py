@@ -9,9 +9,9 @@ class LoadTrajectory(object):
 	""" Loads a trajectory from the file system and publishes it to a ROS topic.
 	"""
 	def __init__(self):
-		self.path           = rospy.get_param("~trajectory")
-		self.should_publish = bool(rospy.get_param("~publish"))
-		self.pub_topic      = rospy.get_param("~topic")
+		self.path           = rospy.get_param("trajectory")
+		self.should_publish = bool(rospy.get_param("publish"))
+		self.pub_topic      = rospy.get_param("/topic")
 
 		# initialize and load the trajectory
 		self.trajectory = LineTrajectory("/loaded_trajectory")
@@ -37,5 +37,5 @@ class LoadTrajectory(object):
 if __name__=="__main__":
 	rospy.init_node("load_trajectory")
 	pf = LoadTrajectory()
-	if bool(rospy.get_param("~spin")):
-		rospy.spin()
+	#if bool(rospy.get_param("spin")):
+	rospy.spin()

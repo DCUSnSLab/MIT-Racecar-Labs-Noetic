@@ -37,7 +37,7 @@ float32[] intensities # intensity data [device-specific units]. If your
 
 """
 
-MIN_FRONT_DIST = 1.0 # meters
+MIN_FRONT_DIST = 0.5 # meters
 FAN_ANGLE = 15.0 # angle that is considered the front
 N_BINS = 19
 

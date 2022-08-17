@@ -18,14 +18,14 @@ class PurePursuit(object):
 	    Relies on localization for ground truth vehicle position.
 	"""
 	def __init__(self):
-		self.trajectory_topic = rospy.get_param("~trajectory_topic")
-		self.odom_topic       = rospy.get_param("~odom_topic")
-		self.lookahead        = rospy.get_param("~lookahead")
-		self.max_reacquire    = rospy.get_param("~max_reacquire")
-		self.speed            = float(rospy.get_param("~speed"))
-		self.wrap             = bool(rospy.get_param("~wrap"))
-		wheelbase_length      = float(rospy.get_param("~wheelbase"))
-		self.drive_topic      = rospy.get_param("~drive_topic")
+		self.trajectory_topic = rospy.get_param("/trajectory_topic")
+		self.odom_topic       = rospy.get_param("/odom_topic")
+		self.lookahead        = rospy.get_param("lookahead")
+		self.max_reacquire    = rospy.get_param("max_reacquire")
+		self.speed            = float(rospy.get_param("speed"))
+		self.wrap             = bool(rospy.get_param("wrap"))
+		wheelbase_length      = float(rospy.get_param("wheelbase"))
+		self.drive_topic      = rospy.get_param("/drive_topic")
 
 		self.trajectory  = utils.LineTrajectory("/followed_trajectory")
 		self.model       = utils.AckermannModel(wheelbase_length)
@@ -35,18 +35,14 @@ class PurePursuit(object):
 		
 		self.nearest_point   = None
 		self.lookahead_point = None
-
 		# set up the visualization topic to show the nearest point on the trajectory, and the lookahead point
 		self.viz_namespace = "/pure_pursuit"
 		self.nearest_point_pub = rospy.Publisher(self.viz_namespace + "/nearest_point", Marker, queue_size = 1)
 		self.lookahead_point_pub = rospy.Publisher(self.viz_namespace + "/lookahead_point", Marker, queue_size = 1)
-		
 		# topic to send drive commands to
-		self.control_pub = rospy.Publisher(self.drive_topic, AckermannDriveStamped, queue_size =1 )
-
+		self.control_pub = rospy.Publisher("/vesc/high_level/ackermann_cmd_mux/input/nav_0", AckermannDriveStamped, queue_size =1 )
 		# topic to listen for trajectories
 		self.traj_sub = rospy.Subscriber(self.trajectory_topic, PolygonStamped, self.trajectory_callback, queue_size=1)
-		
 		# topic to listen for odometry messages, either from particle filter or the simulator
 		self.odom_sub = rospy.Subscriber(self.odom_topic,  Odometry, self.odom_callback, queue_size=1)
 		print "Initialized. Waiting on messages..."

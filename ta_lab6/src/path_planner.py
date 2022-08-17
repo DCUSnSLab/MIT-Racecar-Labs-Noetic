@@ -170,14 +170,14 @@ class SpaceExploration(HeuristicSearch):
 	"""
 	def __init__(self, omap):
 		# fetch relevant parameters
-		self.branch_factor    = int(rospy.get_param("~branch_factor"))
-		self.min_turn_radius  = float(rospy.get_param("~minimum_turn_radius"))
-		self.soft_min_radius  = float(rospy.get_param("~soft_min_radius"))
-		self.soft_min_penalty = float(rospy.get_param("~soft_min_penalty"))
-		self.hard_min_radius  = float(rospy.get_param("~hard_min_radius"))
-		self.heuristic_bias   = float(rospy.get_param("~heuristic_bias"))
-		self.min_goal_overlap = float(rospy.get_param("~min_goal_overlap"))
-		self.half_space_theta = float(rospy.get_param("~half_space_theta", 0))
+		self.branch_factor    = int(rospy.get_param("branch_factor"))
+		self.min_turn_radius  = float(rospy.get_param("minimum_turn_radius"))
+		self.soft_min_radius  = float(rospy.get_param("soft_min_radius"))
+		self.soft_min_penalty = float(rospy.get_param("soft_min_penalty"))
+		self.hard_min_radius  = float(rospy.get_param("hard_min_radius"))
+		self.heuristic_bias   = float(rospy.get_param("heuristic_bias"))
+		self.min_goal_overlap = float(rospy.get_param("min_goal_overlap"))
+		self.half_space_theta = float(rospy.get_param("half_space_theta", 0))
 
 		# cache reused values
 		self.map = omap
@@ -267,16 +267,16 @@ class PathPlanner(HeuristicSearch):
 	'''
 	def __init__(self, omap):
 		# fetch relevant parameters
-		self.branch_factor    = int(rospy.get_param("~fp_branch_factor"))
-		self.min_turn_radius  = float(rospy.get_param("~fp_minimum_turn_radius"))
-		self.soft_min_radius  = float(rospy.get_param("~soft_min_radius"))
-		self.soft_min_penalty = float(rospy.get_param("~fp_soft_min_penalty"))
-		self.hard_min_radius  = float(rospy.get_param("~hard_min_radius"))
-		self.heuristic_bias   = float(rospy.get_param("~fp_heuristic_bias"))
-		self.min_goal_overlap = float(rospy.get_param("~min_goal_overlap"))
-		self.half_space_theta = float(rospy.get_param("~half_space_theta", 0))
-		self.exploration_coeff= float(rospy.get_param("~fp_exploration_coeff"))
-		self.max_circle_radius= float(rospy.get_param("~fp_max_circle_radius"))
+		self.branch_factor    = int(rospy.get_param("fp_branch_factor"))
+		self.min_turn_radius  = float(rospy.get_param("fp_minimum_turn_radius"))
+		self.soft_min_radius  = float(rospy.get_param("soft_min_radius"))
+		self.soft_min_penalty = float(rospy.get_param("fp_soft_min_penalty"))
+		self.hard_min_radius  = float(rospy.get_param("hard_min_radius"))
+		self.heuristic_bias   = float(rospy.get_param("fp_heuristic_bias"))
+		self.min_goal_overlap = float(rospy.get_param("min_goal_overlap"))
+		self.half_space_theta = float(rospy.get_param("half_space_theta", 0))
+		self.exploration_coeff= float(rospy.get_param("fp_exploration_coeff"))
+		self.max_circle_radius= float(rospy.get_param("fp_max_circle_radius"))
 
 		self.map = omap
 		self.next_goal = None
@@ -405,16 +405,16 @@ class FindTrajectory(object):
 	def __init__(self):
 		self.found_trajectory  = utils.LineTrajectory("/found_trajectory")
 		self.rough_trajectory  = utils.LineTrajectory("/rough_trajectory")
-		self.should_publish    = bool(rospy.get_param("~publish"))
-		self.pub_topic         = rospy.get_param("~trajectory_topic")
-		self.odom_topic        = rospy.get_param("~odom_topic")
-		self.exploration_timeout  = rospy.get_param("~exploration_timeout")
-		self.show_exploration_buffer = rospy.get_param("~show_exploration_buffer")
-		self.save_trajectory   = rospy.get_param("~save_trajectory")
-		self.save_path         = rospy.get_param("~save_path")
+		self.should_publish    = bool(rospy.get_param("publish"))
+		self.pub_topic         = rospy.get_param("/trajectory_topic")
+		self.odom_topic        = rospy.get_param("/odom_topic")
+		self.exploration_timeout  = rospy.get_param("exploration_timeout")
+		self.show_exploration_buffer = rospy.get_param("show_exploration_buffer")
+		self.save_trajectory   = rospy.get_param("save_trajectory")
+		self.save_path         = rospy.get_param("save_path")
 
-		self.should_refine_trajectory = bool(rospy.get_param("~refine_trajectory"))
-		self.refining_timeout  = rospy.get_param("~refining_timeout")
+		self.should_refine_trajectory = bool(rospy.get_param("refine_trajectory"))
+		self.refining_timeout  = rospy.get_param("refining_timeout")
 
 		self.map = None
 		self.map_initialized = False
@@ -508,7 +508,7 @@ class FindTrajectory(object):
 			# self.circle_pub.publish(marker)
 
 			markers = [utils.marker_clear_all("/map")]
-			markers += [utils.marker_from_circle(circle, index=i, linewidth=0.05, color=ColorRGBA(1, 0, 0, 0.4), \
+			markers += [utils.marker_from_circle(circle, index=i, linewidth=0.05, color=ColorRGBA(1, 1, 0, 0.4), \
 						lifetime=4.0)
 						for i, circle in enumerate(self.circle_path.states)]
 			# print len(markers)

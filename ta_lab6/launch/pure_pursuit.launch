@@ -1,6 +1,7 @@
 <launch>
 
   <node pkg="ta_lab6" type="pure_pursuit.py" name="pure_pursuit_node" output="screen">
+    <remap from="/vesc/high_level/ackermann_cmd_mux/input/nav_0" to="ackermann_cmd"/>
   </node>
   
 </launch>

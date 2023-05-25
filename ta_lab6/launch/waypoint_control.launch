@@ -34,4 +34,5 @@
 		<param name="fp_minimum_turn_radius" value="0.4"/> <!-- defines bounds on exploration -->
 		<param name="fp_max_circle_radius" value="1.1"/>
 	<!--/node -->
+	<include file="$(find vesc_ackermann)/launch/ackermann_to_vesc_node.launch" />
 </launch>
